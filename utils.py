@@ -45,13 +45,20 @@ def calculate_yearly_amortization_amounts(
         pv=loan_amount
     )
 
-    assert (mortgage_payment_plan["payment"] == mortgage_payment_plan["principal"] + mortgage_payment_plan["interest"]).all()
+    assert (
+        mortgage_payment_plan["payment"].round(2) == 
+        (mortgage_payment_plan["principal"] + mortgage_payment_plan["interest"]).round(2)
+    ).all()
 
     # aggregate at the year level
     mortgage_payment_plan["year"] = mortgage_payment_plan.index.year
     mortgage_payment_plan_yearly = mortgage_payment_plan.groupby("year").sum()
 
     del mortgage_payment_plan_yearly["period"]
-    mortgage_payment_plan_yearly.index = range(year_start, year_end)
+    mortgage_payment_plan_yearly.index = pd.date_range(
+        start=f'{year_start}-01-01',
+        end=f'{year_end-1}-12-31',
+        freq='Y'
+    )
 
     return mortgage_payment_plan_yearly
