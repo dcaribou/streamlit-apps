@@ -55,7 +55,7 @@ def buy_forecasts(
     buying_transaction_cost_rate: float,
     loan_amount: float,
     mortgage_interest_rate: float,
-    selling_transaction_cost_rate: float
+    transaction_cost_rate: float
 ):
 
     forecasts = pd.DataFrame()
@@ -115,7 +115,7 @@ def buy_forecasts(
     forecasts["house_value"] = house_price * forecasts["cumulative_house_appreciation"]
     forecasts["buying_transaction_cost"] = -(house_price * buying_transaction_cost_rate)
 
-    forecasts["house_value_after_tax"] = forecasts["house_value"] * (1 - selling_transaction_cost_rate)
+    forecasts["house_value_after_tax"] = forecasts["house_value"] * (1 - transaction_cost_rate)
     forecasts["cumulative_mortgage_principal"] = forecasts["mortgage_principal"].cumsum()
     forecasts["buyer_savings"] = (
         forecasts["net_annual_income"] - 

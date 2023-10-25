@@ -6,7 +6,7 @@ from utils import (
     rent_forecasts
 )
 
-TITLE = "Financial Analysis: Buy vs Rent"
+TITLE = "🏡 Financial Analysis: Buy vs Rent"
 
 st.set_page_config(
    page_title=TITLE,
@@ -21,8 +21,9 @@ with st.expander("Problem statement", expanded=False):
     st.markdown("""
     This is an attempt to model the financial decision of renting vs buying a house according to a set of configurable parameters. The goal is to produce two plots
 
-    * Net worth of an individual that decided to rent over the next 30 years
-    * Net worth of an individual that decided to buy over the next 30 years
+    * Net worth of an individual that decided to rent over the next X years
+    * Net worth of an individual that decided to buy over the next X years
+
 
     The net worth of an individual who rents is calculated as
     ```
@@ -45,29 +46,29 @@ with st.expander("Model Inputs", expanded=False):
 
     with col1:
         TIME_PERIOD = st.number_input("Time period (years)", value=30)
-        INFLATION_RATE = st.number_input("Inflation rate", value=0.04)
-        BUDGET = st.number_input("Budget", value=350000, step=10000)
+        INFLATION_RATE = st.number_input("Inflation (rate)", value=0.04)
+        BUDGET = st.number_input("Budget (€)", value=350000, step=10000)
     
     with col2:
-        NET_ANNUAL_INCOME = st.number_input("Monthly net income", value=0, step=200) * 12
+        NET_ANNUAL_INCOME = st.number_input("Monthly net income (€)", value=0, step=200) * 12
         RENT_INITIAL_AMOUNT = st.number_input(
-            "Initial rent amount", value=1200, step=200
+            "Initial rent amount (€)", value=1200, step=200
         ) * 12
-        MARKET_RETURN = st.number_input("Market return", value=0.05)
+        MARKET_RETURN = st.number_input("Market return (rate)", value=0.05)
 
     with col3:
         HOUSE_APPRECIATION_RATE = st.number_input(
-            "House appreciation rate", value=0.02
+            "House appreciation (rate)", value=0.02
         )
         HOUSE_MAINTENANCE_COST_RATE = st.number_input(
-            "House maintenance cost rate",
+            "House maintenance cost (rate)",
             value=0.005,
             min_value=0.000,
             step=0.005,
             format="%.3f"
         )
         DOWN_PAYMENT_RATE = st.number_input(
-            "Down payment rate",
+            "Down payment (rate)",
             help="The percentage of the house price that is paid initially a down payment.",
             value=0.5,
             min_value=0.0,
@@ -77,29 +78,29 @@ with st.expander("Model Inputs", expanded=False):
     
     with col4:
         CAPIAL_GAINS_TAX_RATE = st.number_input(
-            "Capital gains tax rate", value=0.20
+            "Capital gains tax (rate)", value=0.20
         )
         MORTGAGE_INTEREST_RATE = st.number_input(
-            "Mortgage interest rate", value=0.03, min_value=0.0, max_value=1.0
+            "Mortgage interest (rate)", value=0.03, min_value=0.0, max_value=1.0
         )
-        BUYING_TRANSACTION_COST_RATE = st.number_input(
-            "Buying transaction cost rate", value=0.15
-        )
-        SELLING_TRANSACTION_COST_RATE = st.number_input(
-            "Selling transaction cost rate", value=0.10
+        TRANSACTION_COST_RATE = st.number_input(
+            "Transaction cost (rate)", value=0.15,
+            help="The cost of buying / selling a house as a percentage of the price.",
         )
 
-HOUSE_PRICE = BUDGET / (1 + BUYING_TRANSACTION_COST_RATE)
-BUYING_TRANSACTION_COST = HOUSE_PRICE * BUYING_TRANSACTION_COST_RATE
-assert round(HOUSE_PRICE + BUYING_TRANSACTION_COST) == BUDGET
+HOUSE_PRICE = BUDGET / (1 + TRANSACTION_COST_RATE)
+TRANSACTION_COST = HOUSE_PRICE * TRANSACTION_COST_RATE
+assert round(HOUSE_PRICE + TRANSACTION_COST) == BUDGET
 LOAN_AMOUNT = HOUSE_PRICE * (1 - DOWN_PAYMENT_RATE)
 EXCEEDING_BUDGET = LOAN_AMOUNT
 MORGATGE_TERM = TIME_PERIOD
 
 st.info(f"""
-With the current settings
-* the **maximum house price** that can be afforded within the budget is {round(HOUSE_PRICE, 2)}€
-* the **required loan amount** is {round(LOAN_AMOUNT, 2)}€
+Some additional variables that derive from the inputs above are
+* the **maximum house price** affordable → {round(HOUSE_PRICE, 2)}€
+* the **transaction cost** → {round(TRANSACTION_COST, 2)}€
+* the **required loan amount** → {round(LOAN_AMOUNT, 2)}€
+* the **exceeding budget** → {round(EXCEEDING_BUDGET, 2)}€
 """,
  icon="ℹ️"
 )
@@ -135,10 +136,10 @@ buy_forecasts_house_df = buy_forecasts(
     house_price=HOUSE_PRICE,
     house_appreciation_rate=HOUSE_APPRECIATION_RATE,
     house_maintenance_cost_rate=HOUSE_MAINTENANCE_COST_RATE,
-    buying_transaction_cost_rate=BUYING_TRANSACTION_COST_RATE,
+    buying_transaction_cost_rate=TRANSACTION_COST_RATE,
     loan_amount=LOAN_AMOUNT,
     mortgage_interest_rate=MORTGAGE_INTEREST_RATE,
-    selling_transaction_cost_rate=SELLING_TRANSACTION_COST_RATE
+    transaction_cost_rate=TRANSACTION_COST_RATE
 )
 
 # contributions from exceeding budget investment on the markets
