@@ -1,14 +1,16 @@
 import streamlit as st
 import pandas as pd
 
-from utils import calculate_yearly_amortization_amounts
+from utils import (
+    buy_forecasts,
+    rent_forecasts
+)
 
 TITLE = "Financial Analysis: Buy vs Rent"
 
 st.set_page_config(
    page_title=TITLE,
    page_icon="📊",
-   layout="wide",
    initial_sidebar_state="expanded",
 )
 
@@ -42,14 +44,13 @@ with st.expander("Model Inputs", expanded=False):
     col1, col2, col3, col4 = st.columns(4)
 
     with col1:
-        YEAR_START = st.number_input("Year start", value=2023)
-        ANALYSIS_TERM = st.number_input("Analysis term", value=30)
+        TIME_PERIOD = st.number_input("Time period (years)", value=30)
         INFLATION_RATE = st.number_input("Inflation rate", value=0.04)
         BUDGET = st.number_input("Budget", value=350000, step=10000)
     
     with col2:
         NET_ANNUAL_INCOME = st.number_input("Monthly net income", value=0, step=200) * 12
-        INITIAL_RENT_AMOUNT = st.number_input(
+        RENT_INITIAL_AMOUNT = st.number_input(
             "Initial rent amount", value=1200, step=200
         ) * 12
         MARKET_RETURN = st.number_input("Market return", value=0.05)
@@ -88,13 +89,12 @@ with st.expander("Model Inputs", expanded=False):
             "Selling transaction cost rate", value=0.10
         )
 
-YEAR_END = YEAR_START + ANALYSIS_TERM
 HOUSE_PRICE = BUDGET / (1 + BUYING_TRANSACTION_COST_RATE)
 BUYING_TRANSACTION_COST = HOUSE_PRICE * BUYING_TRANSACTION_COST_RATE
 assert round(HOUSE_PRICE + BUYING_TRANSACTION_COST) == BUDGET
 LOAN_AMOUNT = HOUSE_PRICE * (1 - DOWN_PAYMENT_RATE)
 EXCEEDING_BUDGET = LOAN_AMOUNT
-MORGATGE_TERM = ANALYSIS_TERM
+MORGATGE_TERM = TIME_PERIOD
 
 st.info(f"""
 With the current settings
@@ -104,96 +104,100 @@ With the current settings
  icon="ℹ️"
 )
 
-mortgage_payment_plan_yearly = calculate_yearly_amortization_amounts(
-    year_start=YEAR_START,
+# calculate worth contributions for the rent scenario, including
+
+# contributions from budget investment on the markets
+
+rent_forcasts_df = rent_forecasts(
+    time_period=TIME_PERIOD,
+    rent_initial_amount=RENT_INITIAL_AMOUNT,
+    inflation_rate=INFLATION_RATE,
+    market_return=MARKET_RETURN,
+    budget=BUDGET,
+    net_annual_income=NET_ANNUAL_INCOME,
+    capital_gains_tax_rate=CAPIAL_GAINS_TAX_RATE
+)
+
+# final net worth of the renter scenario
+
+rent_forcasts_df["renter_net_worth"] = (
+    rent_forcasts_df["portfolio_value_after_tax"] + 
+    rent_forcasts_df["cumulative_savings"]
+)
+
+# calculate worth contributions for the buy scenario, including
+
+# contributions from house property
+
+buy_forecasts_house_df = buy_forecasts(
+    time_period=TIME_PERIOD,
+    net_annual_income=NET_ANNUAL_INCOME,
+    house_price=HOUSE_PRICE,
+    house_appreciation_rate=HOUSE_APPRECIATION_RATE,
+    house_maintenance_cost_rate=HOUSE_MAINTENANCE_COST_RATE,
+    buying_transaction_cost_rate=BUYING_TRANSACTION_COST_RATE,
     loan_amount=LOAN_AMOUNT,
-    mortgage_periods=MORGATGE_TERM,
     mortgage_interest_rate=MORTGAGE_INTEREST_RATE,
+    selling_transaction_cost_rate=SELLING_TRANSACTION_COST_RATE
 )
 
-analysis = pd.DataFrame()
+# contributions from exceeding budget investment on the markets
 
-analysis.index = pd.date_range(
-    start=f'{YEAR_START}-01-01',
-    end=f'{YEAR_END-1}-12-31',
-    freq='Y'
+buy_forecasts_markets_df = rent_forecasts(
+    time_period=TIME_PERIOD,
+    rent_initial_amount=0,
+    inflation_rate=INFLATION_RATE,
+    market_return=MARKET_RETURN,
+    budget=EXCEEDING_BUDGET,
+    net_annual_income=NET_ANNUAL_INCOME,
+    capital_gains_tax_rate=CAPIAL_GAINS_TAX_RATE
 )
 
-analysis["inflation_rate"] = INFLATION_RATE
-analysis["market_return"] = MARKET_RETURN
-analysis["house_appreciation_rate"] = HOUSE_APPRECIATION_RATE
-analysis["budget"] = BUDGET
-analysis["exceeding_budget"] = EXCEEDING_BUDGET
-
-analysis["cumulative_inflation_rate"] = (1 + analysis["inflation_rate"]).cumprod()
-analysis["cumulative_market_return"] = (1 + analysis["market_return"]).cumprod()
-
-analysis["net_annual_income"] = NET_ANNUAL_INCOME * analysis["cumulative_inflation_rate"]
-
-# renter calculations
-
-analysis["rent_amount"] = INITIAL_RENT_AMOUNT * analysis["cumulative_inflation_rate"]
-analysis["renter_savings"] = analysis["net_annual_income"] - analysis["rent_amount"]
-analysis["cumulative_renter_savings"] = analysis["renter_savings"].cumsum()
-analysis["renter_portfolio_value"] = (
-    analysis["budget"] * analysis["cumulative_market_return"]
-)
-analysis["renter_portfolio_value_after_tax"] = (
-    analysis["renter_portfolio_value"] - 
-    (analysis["renter_portfolio_value"] - analysis["budget"]) * CAPIAL_GAINS_TAX_RATE
-)
-analysis["renter_net_woth"] = (
-    analysis["renter_portfolio_value_after_tax"] + analysis["cumulative_renter_savings"]
+buy_forecasts_df = pd.merge(
+    buy_forecasts_house_df,
+    buy_forecasts_markets_df,
+    left_index=True,
+    right_index=True,
+    suffixes=("_house", "_markets")
 )
 
-# buyer calculations
+# final net worth of the buyer scenario
 
-analysis["cumulative_house_appreciation"] = (1 + analysis["house_appreciation_rate"]).cumprod()
-analysis["house_value"] = HOUSE_PRICE * analysis["cumulative_house_appreciation"]
-analysis["buying_transaction_cost"] = -(HOUSE_PRICE * BUYING_TRANSACTION_COST_RATE)
-analysis["mortgage_payment"] = mortgage_payment_plan_yearly["payment"]
-analysis["mortgage_principal"] = mortgage_payment_plan_yearly["principal"]
-analysis["mortgage_interest"] = mortgage_payment_plan_yearly["interest"]
-
-analysis["house_value_after_tax"] = analysis["house_value"] * (1 - SELLING_TRANSACTION_COST_RATE)
-analysis["cumulative_mortgage_principal"] = analysis["mortgage_principal"].cumsum()
-analysis["buyer_savings"] = (
-    analysis["net_annual_income"] - 
-    analysis["mortgage_payment"] - 
-    analysis["house_value"] * HOUSE_MAINTENANCE_COST_RATE
-)
-analysis["cumulative_buyer_savings"] = analysis["buyer_savings"].cumsum()
-analysis["buyer_portfolio_value"] = analysis["exceeding_budget"] * analysis["cumulative_market_return"]
-analysis["buyer_portfolio_value_after_tax"] = (
-    analysis["buyer_portfolio_value"] - 
-    (analysis["buyer_portfolio_value"] - analysis["exceeding_budget"]) * CAPIAL_GAINS_TAX_RATE
-)
-analysis["mortgage_principal_pending_amount"] = -(LOAN_AMOUNT - analysis["cumulative_mortgage_principal"])
-analysis["buyer_net_worth"] = (
-    analysis["house_value_after_tax"] +
-    analysis["buying_transaction_cost"] +
-    analysis["mortgage_principal_pending_amount"] +
-    analysis["cumulative_buyer_savings"] +
-    analysis["buyer_portfolio_value_after_tax"]
+buy_forecasts_df["buyer_net_worth"] = (
+    buy_forecasts_df["house_value_after_tax"] +
+    buy_forecasts_df["buying_transaction_cost"] +
+    buy_forecasts_df["mortgage_principal_pending_amount"] +
+    buy_forecasts_df["cumulative_buyer_savings"] +
+    buy_forecasts_df["portfolio_value_after_tax"]
 )
 
-st.header(f"Net worth of Rent vs Buy over the next {ANALYSIS_TERM} years")
+# diplaying the results
+
+analysis = pd.merge(
+    rent_forcasts_df,
+    buy_forecasts_df,
+    left_index=True,
+    right_index=True,
+    suffixes=("_rent", "_buy")
+)
+
+st.header(f"Net worth of Rent vs Buy over the next {TIME_PERIOD} years")
 
 st.line_chart(
-    data=analysis[["renter_net_woth", "buyer_net_worth"]],
+    data=analysis[["renter_net_worth", "buyer_net_worth"]],
     # green and red colors in hex format
     color=["#00ff00", "#ff0000"]
 )
 
 st.header(f"Buy net worth contributions")
 st.bar_chart(
-    data=analysis[
+    data=buy_forecasts_df[
         [
             "house_value_after_tax",
             "buying_transaction_cost",
             "mortgage_principal_pending_amount",
             "cumulative_buyer_savings",
-            "buyer_portfolio_value_after_tax"
+            "portfolio_value_after_tax"
         ]
     ]
 )
