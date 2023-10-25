@@ -1,6 +1,12 @@
 import pandas as pd
 import numpy_financial as npf
 
+def renter_forecasts():
+    pass
+
+def buyer_forecasts():
+    pass
+
 def calculate_yearly_amortization_amounts(
     year_start: int,
     loan_amount: float,
@@ -9,10 +15,10 @@ def calculate_yearly_amortization_amounts(
 
 ) -> pd.DataFrame:
     """Compute the morgage payment plan for the mortgage term, including
-- Yearly payment
-- Yearly principal
-- Yearly interest
-"""
+    - Yearly payment
+    - Yearly principal
+    - Yearly interest
+    """
 
     mortgage_payment_plan = pd.DataFrame()
 

@@ -14,27 +14,29 @@ st.set_page_config(
 
 st.title(TITLE)
 
-st.markdown("""
-This is an attempt to model the financial decision of renting vs buying a house according to a set of configurable parameters. The goal is to produce two plots
+with st.expander("Problem statement", expanded=False):
 
-* Net worth of an individual that decided to rent over the next 30 years
-* Net worth of an individual that decided to buy over the next 30 years
+    st.markdown("""
+    This is an attempt to model the financial decision of renting vs buying a house according to a set of configurable parameters. The goal is to produce two plots
 
-The net worth of an individual who rents is calculated as
-```
-(the net amount they can sell their investments for at a point in time)
-    - (the accumulated expenses on the renting scenario)
-```
+    * Net worth of an individual that decided to rent over the next 30 years
+    * Net worth of an individual that decided to buy over the next 30 years
 
-The net worth of an individual who buys a house is calculated as
-```
-(the net amount they can sell the house for at a point in time) 
-    - (the amount that is remaining on the mortgage) 
-    - (the accumulated expenses on the renting scenario)
-    + (the capital gains on the exceeding budget)
-```
-"""
-)
+    The net worth of an individual who rents is calculated as
+    ```
+    (the net amount they can sell their investments for at a point in time)
+        - (the accumulated expenses on the renting scenario)
+    ```
+
+    The net worth of an individual who buys a house is calculated as
+    ```
+    (the net amount they can sell the house for at a point in time) 
+        - (the amount that is remaining on the mortgage) 
+        - (the accumulated expenses on the renting scenario)
+        + (the capital gains on the exceeding budget)
+    ```
+    """
+    )
 
 with st.expander("Model Inputs", expanded=False):
     col1, col2, col3, col4 = st.columns(4)
@@ -43,13 +45,13 @@ with st.expander("Model Inputs", expanded=False):
         YEAR_START = st.number_input("Year start", value=2023)
         ANALYSIS_TERM = st.number_input("Analysis term", value=30)
         INFLATION_RATE = st.number_input("Inflation rate", value=0.04)
-        BUDGET = st.number_input("Budget", value=350000, format="%d")
+        BUDGET = st.number_input("Budget", value=350000, step=10000)
     
     with col2:
-        NET_ANNUAL_INCOME = st.number_input("Monthly net income", value=3000, step=200) * 12
+        NET_ANNUAL_INCOME = st.number_input("Monthly net income", value=0, step=200) * 12
         INITIAL_RENT_AMOUNT = st.number_input(
-            "Initial rent amount", value=1200 * 12
-        )
+            "Initial rent amount", value=1200, step=200
+        ) * 12
         MARKET_RETURN = st.number_input("Market return", value=0.05)
 
     with col3:
@@ -57,7 +59,11 @@ with st.expander("Model Inputs", expanded=False):
             "House appreciation rate", value=0.02
         )
         HOUSE_MAINTENANCE_COST_RATE = st.number_input(
-            "House maintenance cost rate", value=0.01
+            "House maintenance cost rate",
+            value=0.005,
+            min_value=0.000,
+            step=0.005,
+            format="%.3f"
         )
         DOWN_PAYMENT_RATE = st.number_input(
             "Down payment rate",
@@ -85,12 +91,18 @@ with st.expander("Model Inputs", expanded=False):
 YEAR_END = YEAR_START + ANALYSIS_TERM
 HOUSE_PRICE = BUDGET / (1 + BUYING_TRANSACTION_COST_RATE)
 BUYING_TRANSACTION_COST = HOUSE_PRICE * BUYING_TRANSACTION_COST_RATE
-assert HOUSE_PRICE + BUYING_TRANSACTION_COST == BUDGET
+assert round(HOUSE_PRICE + BUYING_TRANSACTION_COST) == BUDGET
 LOAN_AMOUNT = HOUSE_PRICE * (1 - DOWN_PAYMENT_RATE)
 EXCEEDING_BUDGET = LOAN_AMOUNT
 MORGATGE_TERM = ANALYSIS_TERM
 
-st.info(f"The current settings simulate a house price of ${round(HOUSE_PRICE, 2)}", icon="ℹ️")
+st.info(f"""
+With the current settings
+* the **maximum house price** that can be afforded within the budget is {round(HOUSE_PRICE, 2)}€
+* the **required loan amount** is {round(LOAN_AMOUNT, 2)}€
+""",
+ icon="ℹ️"
+)
 
 mortgage_payment_plan_yearly = calculate_yearly_amortization_amounts(
     year_start=YEAR_START,
@@ -138,7 +150,7 @@ analysis["renter_net_woth"] = (
 
 analysis["cumulative_house_appreciation"] = (1 + analysis["house_appreciation_rate"]).cumprod()
 analysis["house_value"] = HOUSE_PRICE * analysis["cumulative_house_appreciation"]
-analysis["buying_transaction_cost"] = HOUSE_PRICE * BUYING_TRANSACTION_COST_RATE
+analysis["buying_transaction_cost"] = -(HOUSE_PRICE * BUYING_TRANSACTION_COST_RATE)
 analysis["mortgage_payment"] = mortgage_payment_plan_yearly["payment"]
 analysis["mortgage_principal"] = mortgage_payment_plan_yearly["principal"]
 analysis["mortgage_interest"] = mortgage_payment_plan_yearly["interest"]
@@ -156,14 +168,36 @@ analysis["buyer_portfolio_value_after_tax"] = (
     analysis["buyer_portfolio_value"] - 
     (analysis["buyer_portfolio_value"] - analysis["exceeding_budget"]) * CAPIAL_GAINS_TAX_RATE
 )
+analysis["mortgage_principal_pending_amount"] = -(LOAN_AMOUNT - analysis["cumulative_mortgage_principal"])
 analysis["buyer_net_worth"] = (
-    analysis["house_value_after_tax"] -
-    analysis["buying_transaction_cost"] -
-    (LOAN_AMOUNT - analysis["cumulative_mortgage_principal"]) +
+    analysis["house_value_after_tax"] +
+    analysis["buying_transaction_cost"] +
+    analysis["mortgage_principal_pending_amount"] +
     analysis["cumulative_buyer_savings"] +
     analysis["buyer_portfolio_value_after_tax"]
 )
 
-st.line_chart(analysis[["renter_net_woth", "buyer_net_worth"]])
+st.header(f"Net worth of Rent vs Buy over the next {ANALYSIS_TERM} years")
+
+st.line_chart(
+    data=analysis[["renter_net_woth", "buyer_net_worth"]],
+    # green and red colors in hex format
+    color=["#00ff00", "#ff0000"]
+)
+
+st.header(f"Buy net worth contributions")
+st.bar_chart(
+    data=analysis[
+        [
+            "house_value_after_tax",
+            "buying_transaction_cost",
+            "mortgage_principal_pending_amount",
+            "cumulative_buyer_savings",
+            "buyer_portfolio_value_after_tax"
+        ]
+    ]
+)
+
+st.header(f"Raw calculations")
 
 st.dataframe(analysis)
