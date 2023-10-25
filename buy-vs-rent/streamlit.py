@@ -41,52 +41,43 @@ with st.expander("Problem statement", expanded=False):
     """
     )
 
-with st.expander("Model Inputs", expanded=False):
-    col1, col2, col3, col4 = st.columns(4)
-
-    with col1:
-        TIME_PERIOD = st.number_input("Time period (years)", value=30)
-        INFLATION_RATE = st.number_input("Inflation (rate)", value=0.04)
-        BUDGET = st.number_input("Budget (€)", value=350000, step=10000)
-    
-    with col2:
-        NET_ANNUAL_INCOME = st.number_input("Monthly net income (€)", value=0, step=200) * 12
-        RENT_INITIAL_AMOUNT = st.number_input(
-            "Initial rent amount (€)", value=1200, step=200
-        ) * 12
-        MARKET_RETURN = st.number_input("Market return (rate)", value=0.05)
-
-    with col3:
-        HOUSE_APPRECIATION_RATE = st.number_input(
-            "House appreciation (rate)", value=0.02
-        )
-        HOUSE_MAINTENANCE_COST_RATE = st.number_input(
-            "House maintenance cost (rate)",
-            value=0.005,
-            min_value=0.000,
-            step=0.005,
-            format="%.3f"
-        )
-        DOWN_PAYMENT_RATE = st.number_input(
-            "Down payment (rate)",
-            help="The percentage of the house price that is paid initially a down payment.",
-            value=0.5,
-            min_value=0.0,
-            max_value=1.0,
-            step=0.05
-        )
-    
-    with col4:
-        CAPIAL_GAINS_TAX_RATE = st.number_input(
-            "Capital gains tax (rate)", value=0.20
-        )
-        MORTGAGE_INTEREST_RATE = st.number_input(
-            "Mortgage interest (rate)", value=0.03, min_value=0.0, max_value=1.0
-        )
-        TRANSACTION_COST_RATE = st.number_input(
-            "Transaction cost (rate)", value=0.15,
-            help="The cost of buying / selling a house as a percentage of the price.",
-        )
+with st.sidebar:
+    TIME_PERIOD = st.number_input("Time period (years)", value=30)
+    INFLATION_RATE = st.number_input("Inflation (rate)", value=0.04)
+    BUDGET = st.number_input("Budget (€)", value=350000, step=10000)
+    NET_ANNUAL_INCOME = st.number_input("Monthly net income (€)", value=0, step=200) * 12
+    RENT_INITIAL_AMOUNT = st.number_input(
+        "Initial rent amount (€)", value=1200, step=200
+    ) * 12
+    MARKET_RETURN = st.number_input("Market return (rate)", value=0.05)
+    HOUSE_APPRECIATION_RATE = st.number_input(
+        "House appreciation (rate)", value=0.02
+    )
+    HOUSE_MAINTENANCE_COST_RATE = st.number_input(
+        "House maintenance cost (rate)",
+        value=0.005,
+        min_value=0.000,
+        step=0.005,
+        format="%.3f"
+    )
+    DOWN_PAYMENT_RATE = st.number_input(
+        "Down payment (rate)",
+        help="The percentage of the house price that is paid initially a down payment.",
+        value=0.5,
+        min_value=0.0,
+        max_value=1.0,
+        step=0.05
+    )
+    CAPIAL_GAINS_TAX_RATE = st.number_input(
+        "Capital gains tax (rate)", value=0.20
+    )
+    MORTGAGE_INTEREST_RATE = st.number_input(
+        "Mortgage interest (rate)", value=0.03, min_value=0.0, max_value=1.0
+    )
+    TRANSACTION_COST_RATE = st.number_input(
+        "Transaction cost (rate)", value=0.15,
+        help="The cost of buying / selling a house as a percentage of the price.",
+    )
 
 HOUSE_PRICE = BUDGET / (1 + TRANSACTION_COST_RATE)
 TRANSACTION_COST = HOUSE_PRICE * TRANSACTION_COST_RATE
@@ -94,16 +85,6 @@ assert round(HOUSE_PRICE + TRANSACTION_COST) == BUDGET
 LOAN_AMOUNT = HOUSE_PRICE * (1 - DOWN_PAYMENT_RATE)
 EXCEEDING_BUDGET = LOAN_AMOUNT
 MORGATGE_TERM = TIME_PERIOD
-
-st.info(f"""
-Some additional variables that derive from the inputs above are
-* the **maximum house price** affordable → {round(HOUSE_PRICE, 2)}€
-* the **transaction cost** → {round(TRANSACTION_COST, 2)}€
-* the **required loan amount** → {round(LOAN_AMOUNT, 2)}€
-* the **exceeding budget** → {round(EXCEEDING_BUDGET, 2)}€
-""",
- icon="ℹ️"
-)
 
 # calculate worth contributions for the rent scenario, including
 
@@ -189,6 +170,17 @@ st.line_chart(
     # green and red colors in hex format
     color=["#00ff00", "#ff0000"]
 )
+
+st.info(f"""
+Some additional variables that derive from the inputs above are
+* the **maximum house price** affordable → {round(HOUSE_PRICE, 2)}€
+* the **transaction cost** → {round(TRANSACTION_COST, 2)}€
+* the **required loan amount** → {round(LOAN_AMOUNT, 2)}€
+* the **exceeding budget** → {round(EXCEEDING_BUDGET, 2)}€
+""",
+ icon="ℹ️"
+)
+
 
 st.header(f"Buy net worth contributions")
 st.bar_chart(
