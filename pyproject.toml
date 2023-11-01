@@ -1,10 +1,9 @@
 [tool.poetry]
-name = "financial-analysis"
+name = "streamlit-apps"
 version = "0.1.0"
 description = ""
 authors = ["dcaribou <davidcereijo@live.com>"]
 readme = "README.md"
-packages = [{include = "financial_analysis"}]
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.13"
@@ -17,6 +16,17 @@ streamlit = "^1.27.2"
 
 [tool.poetry.group.dev.dependencies]
 ipykernel = "^6.25.2"
+watchdog = "^3.0.0"
+pytest = "^7.4.3"
+
+# https://docs.pytest.org/en/latest/reference/reference.html#command-line-flags
+[tool.pytest.ini_options]
+testpaths = [
+    "utils",
+]
+pythonpath = [
+    ".",
+]
 
 [build-system]
 requires = ["poetry-core"]

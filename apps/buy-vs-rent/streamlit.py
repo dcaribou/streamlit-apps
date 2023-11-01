@@ -177,6 +177,7 @@ Some additional variables that derive from the inputs above are
 * the **transaction cost** → {round(TRANSACTION_COST, 2)}€
 * the **required loan amount** → {round(LOAN_AMOUNT, 2)}€
 * the **exceeding budget** → {round(EXCEEDING_BUDGET, 2)}€
+* the **mortgage repayments** (monthly) → {round(buy_forecasts_df["mortgage_payment"].values[0] / 12, 2)}€
 """,
  icon="ℹ️"
 )

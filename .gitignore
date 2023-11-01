@@ -1,3 +1,5 @@
 # add most common .gitignore patterns
 
 __pycache__
+
+.vscode
