@@ -63,7 +63,7 @@ with st.sidebar:
     DOWN_PAYMENT_RATE = st.number_input(
         "Down payment (rate)",
         help="The percentage of the house price that is paid initially a down payment.",
-        value=0.5,
+        value=0.2,
         min_value=0.0,
         max_value=1.0,
         step=0.05
