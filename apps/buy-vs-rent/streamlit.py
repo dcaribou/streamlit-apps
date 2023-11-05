@@ -6,7 +6,7 @@ from utils import (
     rent_forecasts
 )
 
-TITLE = "🏡 Financial Analysis: Buy vs Rent"
+TITLE = "🏡 Buy vs Rent"
 
 st.set_page_config(
    page_title=TITLE,
@@ -15,31 +15,6 @@ st.set_page_config(
 )
 
 st.title(TITLE)
-
-with st.expander("Problem statement", expanded=False):
-
-    st.markdown("""
-    This is an attempt to model the financial decision of renting vs buying a house according to a set of configurable parameters. The goal is to produce two plots
-
-    * Net worth of an individual that decided to rent over the next X years
-    * Net worth of an individual that decided to buy over the next X years
-
-
-    The net worth of an individual who rents is calculated as
-    ```
-    (the net amount they can sell their investments for at a point in time)
-        - (the accumulated expenses on the renting scenario)
-    ```
-
-    The net worth of an individual who buys a house is calculated as
-    ```
-    (the net amount they can sell the house for at a point in time) 
-        - (the amount that is remaining on the mortgage) 
-        - (the accumulated expenses on the renting scenario)
-        + (the capital gains on the exceeding budget)
-    ```
-    """
-    )
 
 with st.sidebar:
     TIME_PERIOD = st.number_input("Time period (years)", value=30)
@@ -165,6 +140,43 @@ analysis = pd.merge(
 
 st.header(f"Net worth of Rent vs Buy over the next {TIME_PERIOD} years")
 
+with st.expander("Problem statement", expanded=False):
+
+    st.markdown("""
+    This is an attempt to model the financial decision of renting vs buying a house according to a set of configurable parameters. The goal is to produce two plots
+
+    * Net worth of an individual that decided to rent over the next X years
+    * Net worth of an individual that decided to buy over the next X years
+
+
+    The net worth of an individual who rents is calculated as
+    ```
+    (the net amount they can sell their investments for at a point in time)
+        - (the accumulated expenses on the renting scenario)
+    ```
+
+    The net worth of an individual who buys a house is calculated as
+    ```
+    (the net amount they can sell the house for at a point in time) 
+        - (the amount that is remaining on the mortgage) 
+        - (the accumulated expenses on the renting scenario)
+        + (the capital gains on the exceeding budget)
+    ```
+    """
+    )
+
+st.markdown("""
+The code for the app and the forecasted rent and buy cases is available in Github
+* [App](https://github.com/dcaribou/streamlit-apps/blob/main/apps/buy-vs-rent/streamlit.py)
+* [Calculations](https://github.com/dcaribou/streamlit-apps/blob/main/apps/buy-vs-rent/utils.py)
+""")
+
+st.success("""
+Play with the inputs in the left pane to see how they affect the forecasted net worth of the renter vs the buyer.
+""",
+icon="🧮"
+)
+
 st.line_chart(
     data=analysis[["renter_net_worth", "buyer_net_worth"]],
     # green and red colors in hex format
@@ -172,7 +184,7 @@ st.line_chart(
 )
 
 st.info(f"""
-Some additional variables that derive from the inputs above are
+Some additional variables that derive from the inputs are
 * the **maximum house price** affordable → {round(HOUSE_PRICE, 2)}€
 * the **transaction cost** → {round(TRANSACTION_COST, 2)}€
 * the **required loan amount** → {round(LOAN_AMOUNT, 2)}€
@@ -197,5 +209,19 @@ st.bar_chart(
 )
 
 st.header(f"Raw calculations")
-
 st.dataframe(analysis)
+# https://docs.streamlit.io/library/api-reference/widgets/st.download_button
+
+@st.cache_resource
+def convert_df(df):
+    # IMPORTANT: Cache the conversion to prevent computation on every rerun
+    return df.to_csv().encode('utf-8')
+
+csv = convert_df(analysis)
+
+st.download_button(
+    label="Download as CSV",
+    data=csv,
+    file_name='analysis.csv',
+    mime='text/csv',
+)
