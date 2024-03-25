@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 
-from utils import (
+from shared.financial import (
     buy_forecasts,
     rent_forecasts
 )
@@ -94,8 +94,7 @@ buy_forecasts_house_df = buy_forecasts(
     house_maintenance_cost_rate=HOUSE_MAINTENANCE_COST_RATE,
     buying_transaction_cost_rate=TRANSACTION_COST_RATE,
     loan_amount=LOAN_AMOUNT,
-    mortgage_interest_rate=MORTGAGE_INTEREST_RATE,
-    transaction_cost_rate=TRANSACTION_COST_RATE
+    mortgage_interest_rate=MORTGAGE_INTEREST_RATE
 )
 
 # contributions from exceeding budget investment on the markets

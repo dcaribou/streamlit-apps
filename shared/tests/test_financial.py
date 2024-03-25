@@ -1,7 +1,7 @@
 """Unit tests for my utils.py module.
 """
 
-from utils.financial import mortgage_principal_contribution, mortgage_monthly_payment
+from shared.financial import mortgage_principal_contribution, mortgage_monthly_payment
 import unittest
 
 class TestUtils(unittest.TestCase):

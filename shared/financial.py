@@ -2,6 +2,46 @@ import pandas as pd
 import numpy_financial as npf
 import datetime
 
+import numpy_financial as npf
+
+def mortgage_monthly_payment(
+    annual_interest_rate: float,
+    principal: float,
+    total_time_period_in_years: int
+):
+    """Calculate the monthly mortgage payment for a given principal, interest rate and time period.
+
+    Based on reference https://onladder.co.uk/blog/how-to-calculate-mortgage-repayments/
+    """
+    return float(-npf.pmt(
+        rate=annual_interest_rate / 12,
+        nper=total_time_period_in_years * 12,
+        pv=principal
+    ))
+
+def mortgage_principal_contribution(
+    annual_interest_rate: float,
+    monthly_payment: float,
+    month_number: int,
+    total_time_period_in_years: int
+):
+    """For a given mortgage payment and time period, calculate the payment proportion that goes towards the principal.
+    """
+    pv = npf.pv(
+        rate=annual_interest_rate / 12,
+        nper=total_time_period_in_years*12,
+        when="end",
+        pmt=-monthly_payment
+    )
+
+    return -npf.ppmt(
+        rate=annual_interest_rate / 12,
+        per=month_number,
+        nper=total_time_period_in_years*12,
+        pv=pv,
+        when="end"
+    )
+
 def rent_forecasts(
     time_period: int,
     rent_initial_amount: int,
@@ -54,8 +94,7 @@ def buy_forecasts(
     house_maintenance_cost_rate: float,
     buying_transaction_cost_rate: float,
     loan_amount: float,
-    mortgage_interest_rate: float,
-    transaction_cost_rate: float
+    mortgage_interest_rate: float
 ):
 
     forecasts = pd.DataFrame()
@@ -115,7 +154,7 @@ def buy_forecasts(
     forecasts["house_value"] = house_price * forecasts["cumulative_house_appreciation"]
     forecasts["buying_transaction_cost"] = -(house_price * buying_transaction_cost_rate)
 
-    forecasts["house_value_after_tax"] = forecasts["house_value"] * (1 - transaction_cost_rate)
+    forecasts["house_value_after_tax"] = forecasts["house_value"] * (1 - buying_transaction_cost_rate)
     forecasts["cumulative_mortgage_principal"] = forecasts["mortgage_principal"].cumsum()
     forecasts["buyer_savings"] = (
         forecasts["net_annual_income"] - 
