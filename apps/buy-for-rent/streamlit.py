@@ -11,21 +11,21 @@ st.title("Buy for Rent")
 with st.expander("Problem statement", expanded=False):
 
     st.markdown("""
-Given a set of parameters, we calculate the ROI of buying a property for renting (short term and long term) over a period of time and compare with stock market returns.
+    Given a set of parameters, we calculate the ROI of a rental property (short term and long term) over a period of time and compare with stock market returns.
 
-In order to calculate the ROI, we use the out-of-pocker method, which is described [here](https://www.fool.com/investing/stock-market/market-sectors/real-estate-investing/roi/).
-The out-of-pocket method defines the ROI as the net profit from the investment divided by the total amount of money invested.
-> `ROI = (Net Profit / Total Investment) * 100`
+    In order to calculate the ROI, we use the out-of-pocker method, which is described [here](https://www.fool.com/investing/stock-market/market-sectors/real-estate-investing/roi/).
+    The out-of-pocket method defines the ROI as the net profit from the investment divided by the total amount of money invested.
+    > `ROI = (Net Profit / Initial Investment) * 100`
 
-For the house, the net profit is the sum of the cashflow from renting the house plus the home equity.
-> `Net Profit = Cashflow + Home Equity`
+    For the house, the net profit is the sum of the aggregated cashflow from the rental plus the home equity.
+    > `Net Profit = Cashflow + Home Equity - Initial Investment (Down Payment)`
 
-The cashflow is the difference between the income from renting the house and the costs of owning the house, including the mortgage payment.
-> `Cashflow = Income - Costs`
+    The cashflow is the difference between the income from renting the house and the costs of owning the house, including the mortgage payment.
+    > `Cashflow = Income - Costs`
 
-The home equity is the difference between the house value and the mortgage principal pending amount.
-> `Home Equity = House Value - Mortgage Principal Pending Amount`
-""")
+    The home equity is the difference between the house value and the mortgage principal pending amount.
+    > `Home Equity = House Value - Mortgage Principal Pending Amount`
+    """)
 
 with st.sidebar:
     st.header("Parameters")
@@ -37,7 +37,7 @@ with st.sidebar:
         usage_pct = st.slider("Usage Percentage", min_value=0.1, max_value=0.5, value=0.2,
             help="The percentage of the time that the house is rented out."
         )
-        maintenance_pct = st.slider("Maintenance Percentage", min_value=0.001, max_value=0.01, value=0.005)
+        maintenance_pct = st.slider("Maintenance Percentage", min_value=0.001, max_value=0.01, value=0.005, step=0.001)
         service_fee = st.slider("Service Fee", min_value=0.03, max_value=0.2, value=0.10)
         annual_suplies = st.number_input("Annual Suplies", value=1200, help="Annual suplies for the house.")
         appreciation_rate = st.slider("Appreciation Rate", min_value=0.01, max_value=0.1, value=0.02)
@@ -51,7 +51,7 @@ with st.sidebar:
 
     with st.expander("Mortgage Parameters", expanded=False):
         down_payment_rate = st.slider("Down Payment Rate", min_value=0.0, max_value=1.0, value=0.2)
-        annual_interest_rate = st.number_input("Annual Interest Rate", value=0.03)
+        annual_interest_rate = st.number_input("Annual Interest Rate", value=2.8, step=0.1) / 100
         total_time_period_in_years = st.number_input("Total Time Period (in years)", value=30)
 
     with st.expander("Opportunity Parameters", expanded=False):
@@ -72,28 +72,28 @@ buy_forecasts_house_df = buy_forecasts(
     mortgage_interest_rate=annual_interest_rate
 )
 
-st.dataframe(buy_forecasts_house_df)
-
 results = pd.DataFrame()
 results["house_value"] = buy_forecasts_house_df["house_value"] 
-results["total_home_equity"] = buy_forecasts_house_df["house_value"] + buy_forecasts_house_df["mortgage_principal_pending_amount"]
-# the home equity gain is the gain in equity compared with the previous year
-results["home_equity_gain"] = results["total_home_equity"].diff()
+results["mortgage_principal_pending_amount"] = buy_forecasts_house_df["mortgage_principal_pending_amount"].abs()
+results["home_equity"] = results["house_value"] - results["mortgage_principal_pending_amount"]
 results["expected_annual_rent"] = results["house_value"] * rent_expectation_rate
 
 # Long term renter
 results["Long term renter income"] = results["expected_annual_rent"]
 results["Long term renter costs"] = (
-    buy_forecasts_house_df["mortgage_payment"] + buy_forecasts_house_df["house_value"] * maintenance_pct
+    buy_forecasts_house_df["mortgage_payment"] + (buy_forecasts_house_df["house_value"] * maintenance_pct)
 )
 results["Long term renter cashflow"] = results["Long term renter income"] - results["Long term renter costs"]
-results["Long term renter net profit"] = results["Long term renter cashflow"] + results["home_equity_gain"]
-results["Long term renter ROI (before taxes)"] = (results["Long term renter net profit"] / down_payment)
+results["Long term renter cummulative cashflow"] = results["Long term renter cashflow"].cumsum()
+results["Long term renter net worth"] = results["Long term renter cummulative cashflow"] + results["home_equity"]
+results["Long term renter net profit"] = results["Long term renter net worth"] - down_payment
+results["Long term renter cummulative ROI"] = results["Long term renter net profit"] / down_payment
+results["Long term renter incremental ROI"] = results["Long term renter net worth"].pct_change()
 
 # Short term renter
 private_use_pct = private_use_nights / 365
 effective_use_pct = usage_pct - private_use_pct
-results["Short term renter income"] = buy_forecasts_house_df["mortgage_payment"] * airbnb_multiplier * effective_use_pct
+results["Short term renter income"] = results["expected_annual_rent"] * airbnb_multiplier * effective_use_pct
 results["Short term renter costs"] = (
     buy_forecasts_house_df["mortgage_payment"] +
     buy_forecasts_house_df["house_value"] * maintenance_pct * effective_use_pct + # maintenance costs depend on usage
@@ -101,7 +101,30 @@ results["Short term renter costs"] = (
     annual_suplies * effective_use_pct
 )
 results["Short term renter cashflow"] = results["Short term renter income"] - results["Short term renter costs"]
-results["Short term renter net profit"] = results["Short term renter cashflow"] + results["home_equity_gain"]
-results["Short term renter ROI (before taxes)"] = (results["Short term renter net profit"] / down_payment)
+results["Short term renter cummulative cashflow"] = results["Short term renter cashflow"].cumsum()
+results["Short term renter net worth"] = results["Short term renter cummulative cashflow"] + results["home_equity"]
+results["Short term renter net profit"] = results["Short term renter net worth"] - down_payment
+results["Short term renter cummulative ROI"] = results["Short term renter net profit"] / down_payment
+results["Short term renter incremental ROI"] = results["Short term renter net worth"].pct_change()
 
-st.dataframe(results)
+# Market returns
+results["Market returns"] = market_return
+results["Market returns cummulative ROI"] = (1 + results["Market returns"]).cumprod()
+
+mortgage_payment = buy_forecasts_house_df["mortgage_payment"].values[0] / 12
+st.info(body=f"""
+The monthly mortgage payment with these parameters adds up to {round(mortgage_payment, 2)}€.
+""",
+    icon="ℹ️"
+)
+
+st.line_chart(
+    data=results[[
+        "Long term renter cummulative ROI",
+        "Short term renter cummulative ROI",
+        "Market returns cummulative ROI"
+    ]],
+    # green, red and blue colors in hex format
+    color=["#00FF00", "#FF0000", "#0000FF"]
+)
+
