@@ -30,8 +30,8 @@ with st.expander("Problem statement", expanded=False):
 with st.sidebar:
     st.header("Parameters")
     with st.expander("House Parameters", expanded=False):
-        house_price = st.number_input("House Price", value=200000)
-        airbnb_multiplier = st.slider("Airbnb Multiplier", min_value=2, max_value=5, value=3,
+        house_price = st.number_input("House Price", value=200000, step=10000)
+        airbnb_multiplier = st.slider("Airbnb Multiplier", min_value=2, max_value=8, value=3,
             help="The number of times the monthly rent that the house can be rented out in a month in Airbnb (or similar)."
         )
         usage_pct = st.slider("Usage Percentage", min_value=0.1, max_value=0.5, value=0.2,
@@ -40,11 +40,10 @@ with st.sidebar:
         maintenance_pct = st.slider("Maintenance Percentage", min_value=0.001, max_value=0.01, value=0.005, step=0.001)
         service_fee = st.slider("Service Fee", min_value=0.03, max_value=0.2, value=0.10)
         annual_suplies = st.number_input("Annual Suplies", value=1200, help="Annual suplies for the house.")
-        appreciation_rate = st.slider("Appreciation Rate", min_value=0.01, max_value=0.1, value=0.02)
         rent_expectation_rate = st.slider(
-            "Rent Expectation Rate", min_value=0.02, max_value=0.1, value=0.05,
+            "Rent Expectation Rate (%)", min_value=2.0, max_value=6.0, value=3.5, step=0.5,
             help="The pct of the house price that is expected ot collect as annual rent."
-            ) # https://www.youtube.com/watch?v=VRDTZmOFDzs&t=2s
+            ) / 100 # https://www.youtube.com/watch?v=VRDTZmOFDzs&t=2s
 
     with st.expander("Tax Parameters", expanded=False):
         effective_tax_rate = st.slider("Effective Tax Rate", min_value=0.1, max_value=0.5, value=0.3)
@@ -65,7 +64,7 @@ buy_forecasts_house_df = buy_forecasts(
     time_period=total_time_period_in_years,
     net_annual_income=0,
     house_price=house_price,
-    house_appreciation_rate=appreciation_rate,
+    house_appreciation_rate=inflation_rate,
     house_maintenance_cost_rate=maintenance_pct,
     buying_transaction_cost_rate=0.1,
     loan_amount=principal,
@@ -73,10 +72,11 @@ buy_forecasts_house_df = buy_forecasts(
 )
 
 results = pd.DataFrame()
-results["house_value"] = buy_forecasts_house_df["house_value"] 
+results["house_value"] = buy_forecasts_house_df["house_value"]
 results["mortgage_principal_pending_amount"] = buy_forecasts_house_df["mortgage_principal_pending_amount"].abs()
 results["home_equity"] = results["house_value"] - results["mortgage_principal_pending_amount"]
 results["expected_annual_rent"] = results["house_value"] * rent_expectation_rate
+results["inflation_rate"] = inflation_rate
 
 # Long term renter
 results["Long term renter income"] = results["expected_annual_rent"]
@@ -112,12 +112,26 @@ results["Market returns"] = market_return
 results["Market returns cummulative ROI"] = (1 + results["Market returns"]).cumprod()
 
 mortgage_payment = buy_forecasts_house_df["mortgage_payment"].values[0] / 12
-st.info(body=f"""
-The monthly mortgage payment with these parameters adds up to {round(mortgage_payment, 2)}€.
-""",
-    icon="ℹ️"
+
+col1, col2, col3, col4 = st.columns(4)
+col1.metric(
+    label="Monthly mortgage (€)",
+    value=int(mortgage_payment)
+)
+col2.metric(
+    label="Monthly rent (€)",
+    value=int(results["expected_annual_rent"].values[0] / 12)
+)
+col3.metric(
+    label="Fortnightly Airbnb ticket (€)",
+    value=int(results["expected_annual_rent"].values[0] * airbnb_multiplier / 26)
+)
+col4.metric(
+    label="Down payment (€)",
+    value=int(down_payment)
 )
 
+st.header("Compared ROI")
 st.line_chart(
     data=results[[
         "Long term renter cummulative ROI",
@@ -128,3 +142,16 @@ st.line_chart(
     color=["#00FF00", "#FF0000", "#0000FF"]
 )
 
+st.header("Compared incremental ROI")
+st.line_chart(
+    data=results[[
+        "Long term renter incremental ROI",
+        "Short term renter incremental ROI",
+        "Market returns",
+        "inflation_rate"
+    ]],
+    # green, red, blue and yellow colors in hex format
+    color=["#00FF00", "#FF0000", "#0000FF", "#FFFF00"]
+)
+
+st.expander("Raw calculations", expanded=False).write(results)
