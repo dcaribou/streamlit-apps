@@ -1,3 +1,5 @@
+from typing import List
+
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -38,20 +40,47 @@ def authenticate(credentials_file_path: str) -> Credentials:
             token.write(creds.to_json())
         return creds
 
-def fetch_calendar_events(credentials: Credentials):
+def fetch_calendar_events(credentials: Credentials, calendar_names: List[str]):
     """Fetch calendar events from Google Calendar API and return them as a list.
 
-    :param credentials: _description_
+    :param credentials: An initialized credentials object.
     :type credentials: Credentials
-    :return: _description_
-    :rtype: _type_
+    :param calendar_names: A list of calendar names to fetch events from.
+    :type calendars: List[str]
+    :return: A list of calendar events.
+    :rtype: List[dict]
     """
 
     # Build the Google Calendar API client
     service = build('calendar', 'v3', credentials=credentials)
 
-    # Call the API to fetch the calendar events
-    events_result = service.events().list(calendarId='primary', maxResults=10).execute()
-    events = events_result.get('items', [])
+    events = []
+
+    # Fetch all calendars and filter by the calendar names
+    all_calendars = fetch_calendars(credentials)
+    calendar_ids = []
+    for calendar in all_calendars:
+        if calendar["summary"] in calendar_names:
+            calendar_ids.append(calendar["id"])
+
+    # Loop through each calendar ID and fetch events
+    for calendar_id in calendar_ids:
+        events_result = service.events().list(calendarId=calendar_id, maxResults=10).execute()
+        events.extend(events_result.get('items', []))
 
     return events
+
+def fetch_calendars(credentials: Credentials):
+    """Fetch calendars from Google Calendar API and return them as a list.
+
+    :param credentials: An initialized credentials object.
+    :type credentials: Credentials
+    """
+    # Build the Google Calendar API client
+    service = build('calendar', 'v3', credentials=credentials)
+
+    # Call the API to fetch the calendar events
+    calendars_result = service.calendarList().list().execute()
+    calendars = calendars_result.get('items', [])
+
+    return calendars

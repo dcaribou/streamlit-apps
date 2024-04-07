@@ -1,16 +1,18 @@
 import streamlit as st
-from shared.googlelib import authenticate, fetch_calendar_events
+from shared.googlelib import (
+        authenticate,
+        fetch_calendars,
+        fetch_calendar_events
+    )
 import pandas as pd
-
-
-st.title("Calendar Analytics")
 
 CREDENTIALS_FILE_PATH = "client_secret_153639038451-8r2mq88ll6utdkb5fe2aacelccpl10mp.apps.googleusercontent.com.json"
 
-creds = authenticate(CREDENTIALS_FILE_PATH)
-events = fetch_calendar_events(creds)
+@st.cache_data
+def load_events(_credentials, calendars: list[str]):
+    return fetch_calendar_events(_credentials, calendars)
 
-def as_dataframe():
+def as_dataframe(events: list[dict]):
     """Converts a list of dicts representing calendar events to a flattened pandas DataFrame.
     Calendar events are represented as follows:
     ```
@@ -54,6 +56,21 @@ def as_dataframe():
     df = pd.DataFrame(events)
     return df
 
-events_df = as_dataframe()
+st.title("Calendar Analytics")
+
+creds = authenticate(CREDENTIALS_FILE_PATH)
+calendars = fetch_calendars(creds)
+
+all_calendars = map(lambda x: x["summary"], calendars)  
+focused_calendars = st.multiselect(
+    label="Calendars",
+    options=all_calendars,
+    default=all_calendars
+)
+
+events = load_events(creds, focused_calendars)
+
+events_df = as_dataframe(events)
 st.dataframe(events_df)
-st.json(events)
+
+st.json(calendars)
