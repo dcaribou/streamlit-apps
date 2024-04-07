@@ -3,3 +3,7 @@
 __pycache__
 
 .vscode
+
+# ignore credentials files
+client_secret*.json
+token.json

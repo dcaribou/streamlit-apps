@@ -12,6 +12,8 @@ pandas = "^2.1.1"
 matplotlib = "^3.8.0"
 numpy-financial = "^1.0.0"
 streamlit = "^1.27.2"
+google-api-python-client = "^2.125.0"
+google-auth-oauthlib = "^1.2.0"
 
 
 [tool.poetry.group.dev.dependencies]
