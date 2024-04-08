@@ -65,10 +65,10 @@ def fetch_calendar_events(credentials: Credentials, calendar_names: List[str]):
 
     # Loop through each calendar ID and fetch events
     for calendar_id in calendar_ids:
-        events_result = service.events().list(calendarId=calendar_id, maxResults=10).execute()
+        events_result = service.events().list(calendarId=calendar_id, maxResults=2500, orderBy='startTime', singleEvents=True).execute()
         events.extend(events_result.get('items', []))
 
-    return events
+    return events[::-1]
 
 def fetch_calendars(credentials: Credentials):
     """Fetch calendars from Google Calendar API and return them as a list.

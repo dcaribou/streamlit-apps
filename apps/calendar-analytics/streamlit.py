@@ -5,6 +5,7 @@ from shared.googlelib import (
         fetch_calendar_events
     )
 import pandas as pd
+import altair as alt
 
 CREDENTIALS_FILE_PATH = "client_secret_153639038451-8r2mq88ll6utdkb5fe2aacelccpl10mp.apps.googleusercontent.com.json"
 
@@ -12,65 +13,66 @@ CREDENTIALS_FILE_PATH = "client_secret_153639038451-8r2mq88ll6utdkb5fe2aacelccpl
 def load_events(_credentials, calendars: list[str]):
     return fetch_calendar_events(_credentials, calendars)
 
-def as_dataframe(events: list[dict]):
-    """Converts a list of dicts representing calendar events to a flattened pandas DataFrame.
-    Calendar events are represented as follows:
-    ```
-    {
-        "kind": "calendar#event",
-        "etag": "\"2799450179276000\"",
-        "id": "ikog8tbg6tavulu62ctavnch4o",
-        "status": "confirmed",
-        "htmlLink": "https://www.google.com/calendar/event?eid=aWtvZzh0Ymc2dGF2dWx1NjJjdGF2bmNoNG8gZGF2aWRjYXJhbXV4b0Bt",
-        "created": "2014-05-10T12:31:29.000Z",
-        "updated": "2014-05-10T12:31:29.638Z",
-        "summary": "Exam",
-        "colorId": "10",
-        "creator": {
-            "email": "davidcaramuxo@gmail.com",
-            "displayName": "David Cariboo",
-            "self": true
-        },
-        "organizer": {
-            "email": "davidcaramuxo@gmail.com",
-            "displayName": "David Cariboo",
-            "self": true
-        },
-        "start": {
-            "dateTime": "2014-06-03T08:00:00+02:00",
-            "timeZone": "Europe/Madrid"
-        },
-        "end": {
-            "dateTime": "2014-06-03T12:00:00+02:00",
-            "timeZone": "Europe/Madrid"
-        },
-        "iCalUID": "ikog8tbg6tavulu62ctavnch4o@google.com",
-        "sequence": 0,
-        "reminders": {
-            "useDefault": true
-        },
-        "eventType": "default"
-        }
-    ```
-    """
-    df = pd.DataFrame(events)
-    return df
+@st.cache_data
+def load_calendars(_credentials):
+    return fetch_calendars(_credentials)
 
 st.title("Calendar Analytics")
 
 creds = authenticate(CREDENTIALS_FILE_PATH)
-calendars = fetch_calendars(creds)
 
-all_calendars = map(lambda x: x["summary"], calendars)  
-focused_calendars = st.multiselect(
-    label="Calendars",
-    options=all_calendars,
-    default=all_calendars
-)
+calendars = load_calendars(creds)
 
+calendar_selection = {}
+with st.sidebar:
+    st.header("Calendars")
+    for calendar in calendars:
+        calendar_name = calendar["summary"]
+        calendar_selection[calendar_name] = st.checkbox(
+            label=calendar_name,
+            value=True
+        )
+
+focused_calendars = [calendar for calendar, selected in calendar_selection.items() if selected]
 events = load_events(creds, focused_calendars)
 
-events_df = as_dataframe(events)
-st.dataframe(events_df)
+events_df = pd.json_normalize(events)
 
-st.json(calendars)
+with st.sidebar:
+    st.header("Filters")
+    timeoffset = st.slider(
+        label="Time offset in days",
+        min_value=0,
+        max_value=120,
+        value=30
+    )
+    exclude_events = st.multiselect(
+        label="Exclude events",
+        options=events_df["summary"].unique(),
+    )
+
+# curate events_df
+
+events_df["start.dateTime"] = pd.to_datetime(events_df["start.dateTime"], utc=True).dt.tz_convert("Europe/Madrid")
+events_df["end.dateTime"] = pd.to_datetime(events_df["end.dateTime"], utc=True).dt.tz_convert("Europe/Madrid")
+events_df["duration"] = pd.to_timedelta(events_df["end.dateTime"] - events_df["start.dateTime"])
+events_df["duration_in_minutes"] = events_df["duration"].dt.total_seconds() / 60
+events_df = events_df[
+    (events_df["start.dateTime"] > pd.Timestamp.now(tz="Europe/Madrid") - pd.Timedelta(days=timeoffset)) &
+    (events_df["start.dateTime"] < pd.Timestamp.now(tz="Europe/Madrid"))
+]
+events_df = events_df[~events_df["summary"].isin(exclude_events)]
+
+# create visualizations
+
+st.altair_chart(
+    altair_chart=alt.Chart(events_df).mark_arc().encode(
+        color="summary",
+        theta="sum(duration_in_minutes)",
+        tooltip=["summary", "sum(duration_in_minutes)"]
+    ),
+    use_container_width=True
+)
+
+with st.expander("Show raw data"):
+    st.dataframe(events_df)
