@@ -9,3 +9,6 @@ Standalone streamlit apps that are or have been useful for me in my daily life.
 ### buy-for-rent
 Explore the value of buying a house to rent it out vs investing the money somewhere else.
 > What is my ROI if I buy a house to rent it out?
+
+### calendar-analytics
+A an app for analyzing my calendar data.
