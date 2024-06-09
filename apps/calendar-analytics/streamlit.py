@@ -62,17 +62,34 @@ events_df = events_df[
     (events_df["start.dateTime"] < pd.Timestamp.now(tz="Europe/Madrid"))
 ]
 events_df = events_df[~events_df["summary"].isin(exclude_events)]
+events_df["duration_in_hours"] = events_df["duration_in_minutes"] / 60
+events_df["week"] = events_df["start.dateTime"].dt.isocalendar().week
 
-# create visualizations
+# filter out events whose average weekly duration is less than 1 hour
+events_df = events_df[
+    events_df.groupby("summary")["duration_in_hours"].transform("mean") > 1
+]
 
+# bar chart of events and their duration over time grouped by week
 st.altair_chart(
-    altair_chart=alt.Chart(events_df).mark_arc().encode(
-        color="summary",
-        theta="sum(duration_in_minutes)",
-        tooltip=["summary", "sum(duration_in_minutes)"]
+    altair_chart=alt.Chart(events_df).mark_line().encode(
+        x="week:O",
+        y="sum(duration_in_hours)",
+        color="summary"
     ),
     use_container_width=True
 )
+
+# pie chart of events and their duration
+st.altair_chart(
+    altair_chart=alt.Chart(events_df).mark_arc().encode(
+        color="summary",
+        theta="sum(duration_in_hours)",
+        tooltip=["summary", "sum(duration_in_hours)"]
+    ),
+    use_container_width=True
+)
+
 
 with st.expander("Show raw data"):
     st.dataframe(events_df)
