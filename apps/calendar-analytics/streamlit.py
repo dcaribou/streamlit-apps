@@ -37,6 +37,7 @@ focused_calendars = [calendar for calendar, selected in calendar_selection.items
 events = load_events(creds, focused_calendars)
 
 events_df = pd.json_normalize(events)
+events_df["summary"] = events_df["summary"].str.strip()
 
 with st.sidebar:
     st.header("Filters")
@@ -64,6 +65,7 @@ events_df = events_df[
 events_df = events_df[~events_df["summary"].isin(exclude_events)]
 events_df["duration_in_hours"] = events_df["duration_in_minutes"] / 60
 events_df["week"] = events_df["start.dateTime"].dt.isocalendar().week
+
 
 # filter out events whose average weekly duration is less than 1 hour
 events_df = events_df[
