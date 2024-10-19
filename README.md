@@ -12,3 +12,6 @@ Explore the value of buying a house to rent it out vs investing the money somewh
 
 ### calendar-analytics
 A an app for analyzing my calendar data.
+- [ ] Improve grouping cleanup (there are some groups that are not useful / seem duplcated)
+- [ ] Use a different library for plotting (or find a way to have a tooltip diplayed, because I can't tell which line is which)
+- [ ] Add header for "Trend view" and "Pie chart view". Maybe add a filter to control de date range for the views.
