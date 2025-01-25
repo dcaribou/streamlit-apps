@@ -2,8 +2,6 @@ import pandas as pd
 import numpy_financial as npf
 import datetime
 
-import numpy_financial as npf
-
 def mortgage_monthly_payment(
     annual_interest_rate: float,
     principal: float,
